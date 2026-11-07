@@ -1,0 +1,1384 @@
+<title>Card Price Check</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=DM+Sans:wght@400;500;600&display=swap">
+
+<style>
+  /*
+    Layout: Left input panel + right analysis panel, stacked mobile
+    Colors: Deep navy bg, gold accent (holographic/premium feel), cool grays
+    Type: Barlow Condensed for labels/headings, DM Sans for body/data
+  */
+  :root {
+    --bg:         #0d1018;
+    --bg-panel:   #141720;
+    --bg-surface: #1b2032;
+    --bg-hover:   #222840;
+    --border:     rgba(255,255,255,0.07);
+    --border-md:  rgba(255,255,255,0.12);
+    --accent:     #c9a84c;
+    --accent-dim: rgba(201,168,76,0.12);
+    --accent-glow:rgba(201,168,76,0.25);
+    --blue:       #5a8fd8;
+    --blue-dim:   rgba(90,143,216,0.12);
+    --fg:         #dfe2ef;
+    --fg-muted:   #7980a0;
+    --fg-dim:     #3d4560;
+    --ok:         #4db87e;
+    --ok-dim:     rgba(77,184,126,0.12);
+    --warn:       #e8a93e;
+    --warn-dim:   rgba(232,169,62,0.12);
+    --bad:        #e05252;
+    --bad-dim:    rgba(224,82,82,0.12);
+    color-scheme: dark;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+  }
+
+  /* ── Header ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: var(--accent-dim);
+    border: 1.5px solid var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .logo-text {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px; font-weight: 700;
+    letter-spacing: 0.5px;
+    color: var(--fg);
+  }
+  .logo-text span { color: var(--accent); }
+  .user-badge {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-md);
+    border-radius: 20px;
+    padding: 5px 12px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--fg-muted);
+  }
+  .user-badge .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 6px var(--ok);
+    flex-shrink: 0;
+  }
+  .user-badge strong { color: var(--accent); }
+
+  /* ── Main layout ── */
+  .main {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 20px;
+    flex: 1;
+    padding-block: 20px;
+    min-height: 0;
+  }
+  @media (max-width: 800px) {
+    .main { grid-template-columns: 1fr; }
+  }
+
+  /* ── Panel base ── */
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .panel-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px; font-weight: 700;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    color: var(--fg-muted);
+  }
+  .panel-body { padding: 16px; }
+
+  /* ── Mode tabs ── */
+  .mode-tabs {
+    display: flex;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 3px;
+    margin-bottom: 16px;
+    gap: 2px;
+  }
+  .mode-tab {
+    flex: 1;
+    padding: 7px 10px;
+    border-radius: 6px;
+    border: none;
+    background: none;
+    color: var(--fg-muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .mode-tab.active {
+    background: var(--bg-hover);
+    color: var(--fg);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .mode-tab:hover:not(.active) { color: var(--fg); }
+
+  /* ── Form elements ── */
+  .form-group { margin-bottom: 12px; }
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  label {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.7px;
+    color: var(--fg-muted);
+    margin-bottom: 5px;
+  }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-md);
+    border-radius: 7px;
+    color: var(--fg);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    padding: 8px 11px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  input:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  input::placeholder, textarea::placeholder { color: var(--fg-dim); }
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237980a0' fill='none' stroke-width='1.5' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
+    cursor: pointer;
+  }
+  select option { background: var(--bg-panel); color: var(--fg); }
+
+  /* ── My listing toggle ── */
+  .my-listing-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--accent-dim);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  .my-listing-toggle:hover { background: var(--accent-glow); }
+  .toggle-label { font-size: 13px; font-weight: 600; color: var(--accent); }
+  .toggle-label small { display: block; font-size: 11px; font-weight: 400; color: var(--fg-muted); margin-top: 1px; }
+  .toggle-switch {
+    width: 36px; height: 20px;
+    background: var(--bg-surface);
+    border-radius: 10px;
+    border: 1px solid var(--border-md);
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 14px; height: 14px;
+    background: var(--fg-muted);
+    border-radius: 50%;
+    transition: transform 0.2s, background 0.2s;
+  }
+  .my-listing-toggle.on .toggle-switch { background: var(--accent); border-color: var(--accent); }
+  .my-listing-toggle.on .toggle-switch::after { transform: translateX(16px); background: white; }
+
+  /* ── Type selector ── */
+  .type-selector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .type-btn {
+    flex: 1;
+    padding: 9px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border-md);
+    background: var(--bg-surface);
+    color: var(--fg-muted);
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  .type-btn .icon { font-size: 18px; }
+  .type-btn:hover { border-color: var(--border-md); color: var(--fg); background: var(--bg-hover); }
+  .type-btn.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+  /* ── Grade pill selector ── */
+  .grade-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .grade-pill {
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid var(--border-md);
+    background: var(--bg-surface);
+    color: var(--fg-muted);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .grade-pill:hover { border-color: var(--blue); color: var(--blue); }
+  .grade-pill.active { border-color: var(--blue); background: var(--blue-dim); color: var(--blue); }
+
+  /* ── Primary button ── */
+  .btn-primary {
+    width: 100%;
+    padding: 11px;
+    background: var(--accent);
+    color: #0d1018;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+    margin-top: 4px;
+  }
+  .btn-primary:hover { opacity: 0.9; }
+  .btn-primary:active { transform: scale(0.99); }
+  .btn-secondary {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 7px 14px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-md);
+    color: var(--fg);
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.12s;
+    white-space: nowrap;
+  }
+  .btn-secondary:hover { background: var(--bg-hover); border-color: var(--fg-dim); }
+  .btn-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-md);
+    color: var(--fg);
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.12s;
+    white-space: nowrap;
+  }
+  .btn-link.accent { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .btn-link.blue { border-color: var(--blue); color: var(--blue); background: var(--blue-dim); }
+  .btn-link:hover { opacity: 0.85; }
+
+  /* ── Right panel ── */
+  .right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ── Empty state ── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 48px 24px;
+    gap: 12px;
+  }
+  .empty-icon { font-size: 48px; opacity: 0.3; }
+  .empty-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 18px; font-weight: 700;
+    color: var(--fg-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .empty-sub { font-size: 13px; color: var(--fg-dim); max-width: 280px; }
+
+  /* ── Comp links ── */
+  .comp-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* ── Price journal ── */
+  .journal-row {
+    display: grid;
+    grid-template-columns: 1fr 90px auto;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 7px;
+  }
+  .journal-price {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+  .price-input-wrap {
+    position: relative;
+  }
+  .price-input-wrap::before {
+    content: '£';
+    position: absolute;
+    left: 10px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--fg-muted);
+    font-size: 13px;
+    pointer-events: none;
+  }
+  .price-input-wrap input {
+    padding-left: 22px;
+  }
+  .journal-add {
+    padding: 8px 12px;
+    background: var(--bg-surface);
+    border: 1px dashed var(--border-md);
+    color: var(--fg-dim);
+    border-radius: 7px;
+    font-size: 12px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .journal-add:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .remove-btn {
+    padding: 5px 8px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--fg-dim);
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.12s;
+  }
+  .remove-btn:hover { border-color: var(--bad); color: var(--bad); background: var(--bad-dim); }
+
+  /* ── Stats row ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .stat-box {
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    text-align: center;
+  }
+  .stat-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--fg-muted);
+    margin-bottom: 3px;
+  }
+  .stat-value {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+  }
+
+  /* ── Verdict badge ── */
+  .verdict {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 9px;
+    border: 1px solid;
+  }
+  .verdict.ok { background: var(--ok-dim); border-color: var(--ok); }
+  .verdict.warn { background: var(--warn-dim); border-color: var(--warn); }
+  .verdict.bad { background: var(--bad-dim); border-color: var(--bad); }
+  .verdict.neutral { background: var(--bg-surface); border-color: var(--border-md); }
+  .verdict-icon { font-size: 28px; flex-shrink: 0; }
+  .verdict-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px; font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .verdict.ok .verdict-label { color: var(--ok); }
+  .verdict.warn .verdict-label { color: var(--warn); }
+  .verdict.bad .verdict-label { color: var(--bad); }
+  .verdict-sub { font-size: 12.5px; color: var(--fg-muted); line-height: 1.4; }
+
+  /* ── Checklist ── */
+  .checklist { list-style: none; padding: 0; margin: 0; }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    transition: opacity 0.12s;
+  }
+  .checklist li:last-child { border-bottom: none; }
+  .checklist li:hover { opacity: 0.85; }
+  .check-box {
+    width: 18px; height: 18px;
+    border-radius: 4px;
+    border: 1.5px solid var(--border-md);
+    background: var(--bg-surface);
+    flex-shrink: 0;
+    margin-top: 1px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+    transition: all 0.12s;
+  }
+  .checklist li.checked .check-box {
+    background: var(--ok);
+    border-color: var(--ok);
+    color: white;
+  }
+  .check-text { font-size: 13px; line-height: 1.4; }
+  .checklist li.checked .check-text { color: var(--fg-muted); text-decoration: line-through; }
+  .check-hint { font-size: 11px; color: var(--fg-dim); display: block; margin-top: 2px; }
+
+  /* ── Checklist progress ── */
+  .check-progress {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px;
+  }
+  .check-bar {
+    flex: 1; height: 4px;
+    background: var(--bg-surface);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .check-fill {
+    height: 100%;
+    background: var(--ok);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+  .check-count { font-size: 12px; font-weight: 600; color: var(--fg-muted); white-space: nowrap; }
+
+  /* ── History section ── */
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .history-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .history-item:hover { background: var(--bg-hover); }
+  .history-type {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+  }
+  .history-type.sports { background: var(--blue-dim); color: var(--blue); border: 1px solid var(--blue); }
+  .history-type.pokemon { background: var(--warn-dim); color: var(--warn); border: 1px solid var(--warn); }
+  .history-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .history-price { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--accent); flex-shrink: 0; }
+  .history-delete { padding: 3px 7px; background: none; border: none; color: var(--fg-dim); cursor: pointer; font-size: 14px; border-radius: 4px; }
+  .history-delete:hover { color: var(--bad); background: var(--bad-dim); }
+
+  .section-label {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--fg-dim);
+    margin-bottom: 8px;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 14px 0;
+  }
+
+  .info-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px;
+    padding: 7px 10px;
+    background: var(--bg-surface);
+    border-radius: 6px;
+    margin-bottom: 7px;
+  }
+  .info-row-label { font-size: 12px; color: var(--fg-muted); }
+  .info-row-val { font-size: 13px; font-weight: 600; color: var(--fg); }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .tag.graded { background: var(--blue-dim); color: var(--blue); border: 1px solid var(--blue); }
+  .tag.raw { background: var(--bg-hover); color: var(--fg-muted); border: 1px solid var(--border-md); }
+  .tag.mine { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); }
+
+  .url-hint {
+    font-size: 11px;
+    color: var(--fg-dim);
+    margin-top: 5px;
+  }
+  .url-hint strong { color: var(--fg-muted); }
+
+  [hidden] { display: none !important; }
+
+  .scroll-panel { overflow-y: auto; max-height: calc(100vh - 160px); }
+  @media (max-width: 800px) {
+    .scroll-panel { max-height: none; overflow-y: visible; }
+  }
+</style>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🃏</div>
+    <div class="logo-text">Card <span>Price</span> Check</div>
+  </div>
+  <div class="user-badge">
+    <div class="dot"></div>
+    eBay: <strong>cardsandcollects</strong>
+  </div>
+</header>
+
+<div class="main">
+  <!-- ── LEFT: Input Panel ── -->
+  <div class="panel scroll-panel">
+    <div class="panel-body">
+      <div class="mode-tabs">
+        <button class="mode-tab active" data-tab="manual" onclick="switchTab('manual')">Manual Entry</button>
+        <button class="mode-tab" data-tab="url" onclick="switchTab('url')">eBay URL</button>
+      </div>
+
+      <!-- Manual entry -->
+      <div id="tab-manual">
+        <div class="type-selector">
+          <button class="type-btn active" data-type="sports" onclick="setCardType('sports')">
+            <span class="icon">⚾</span> Sports Card
+          </button>
+          <button class="type-btn" data-type="pokemon" onclick="setCardType('pokemon')">
+            <span class="icon">⚡</span> Pokémon
+          </button>
+        </div>
+
+        <!-- Sports fields -->
+        <div id="sports-fields">
+          <div class="form-group">
+            <label>Player Name</label>
+            <input type="text" id="s-player" placeholder="e.g. Mike Trout, Patrick Mahomes">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Year</label>
+              <input type="text" id="s-year" placeholder="2023">
+            </div>
+            <div class="form-group">
+              <label>Brand / Set</label>
+              <input type="text" id="s-set" placeholder="Topps Chrome">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Card # / RC</label>
+              <input type="text" id="s-num" placeholder="#TC-100 or RC">
+            </div>
+            <div class="form-group">
+              <label>Parallel / Variation</label>
+              <input type="text" id="s-parallel" placeholder="Refractor, /99...">
+            </div>
+          </div>
+        </div>
+
+        <!-- Pokemon fields -->
+        <div id="pokemon-fields" hidden>
+          <div class="form-group">
+            <label>Card Name</label>
+            <input type="text" id="p-name" placeholder="e.g. Charizard, Pikachu VMAX">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Set</label>
+              <input type="text" id="p-set" placeholder="Base Set, Evolving Skies…">
+            </div>
+            <div class="form-group">
+              <label>Card Number</label>
+              <input type="text" id="p-num" placeholder="4/102, 018/185…">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Variant</label>
+              <input type="text" id="p-variant" placeholder="Holo, Full Art, Alt Art…">
+            </div>
+            <div class="form-group">
+              <label>Language</label>
+              <select id="p-lang">
+                <option value="">English</option>
+                <option value="Japanese">Japanese</option>
+                <option value="Korean">Korean</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Shared: Grade + Price -->
+        <div class="form-group">
+          <label>Grade / Condition</label>
+          <div class="grade-pills">
+            <div class="grade-pill active" data-grade="Raw/Ungraded" onclick="setGrade(this)">Raw</div>
+            <div class="grade-pill" data-grade="PSA 10" onclick="setGrade(this)">PSA 10</div>
+            <div class="grade-pill" data-grade="PSA 9" onclick="setGrade(this)">PSA 9</div>
+            <div class="grade-pill" data-grade="PSA 8" onclick="setGrade(this)">PSA 8</div>
+            <div class="grade-pill" data-grade="BGS 9.5" onclick="setGrade(this)">BGS 9.5</div>
+            <div class="grade-pill" data-grade="BGS 9" onclick="setGrade(this)">BGS 9</div>
+            <div class="grade-pill" data-grade="SGC 10" onclick="setGrade(this)">SGC 10</div>
+            <div class="grade-pill" data-grade="CGC 10" onclick="setGrade(this)">CGC 10</div>
+          </div>
+        </div>
+
+        <div class="my-listing-toggle" id="myListingToggle" onclick="toggleMyListing()">
+          <div class="toggle-label">
+            This is my listing
+            <small>cardsandcollects — get optimization tips</small>
+          </div>
+          <div class="toggle-switch"></div>
+        </div>
+
+        <div class="form-group" id="price-group">
+          <label id="price-label">My Asking Price</label>
+          <div class="price-input-wrap">
+            <input type="number" id="asking-price" placeholder="0.00" step="0.01" min="0">
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="analyze()">Find Comps &amp; Analyze</button>
+      </div>
+
+      <!-- URL entry -->
+      <div id="tab-url" hidden>
+        <div class="form-group">
+          <label>eBay Listing URL</label>
+          <textarea id="url-input" placeholder="https://www.ebay.com/itm/..." rows="3"></textarea>
+          <div class="url-hint">Paste any eBay listing URL — item ID will be extracted automatically.</div>
+        </div>
+
+        <div class="my-listing-toggle" id="myListingToggleUrl" onclick="toggleMyListingUrl()">
+          <div class="toggle-label">
+            This is my listing
+            <small>cardsandcollects — get optimization tips</small>
+          </div>
+          <div class="toggle-switch"></div>
+        </div>
+
+        <div class="form-group">
+          <label>Card Details (for comp search)</label>
+          <input type="text" id="url-card-desc" placeholder="e.g. 2020 Topps Chrome Julio Rodriguez RC Refractor">
+        </div>
+
+        <div class="form-group">
+          <label>Grade / Condition</label>
+          <select id="url-grade">
+            <option value="Raw">Raw / Ungraded</option>
+            <option value="PSA 10">PSA 10</option>
+            <option value="PSA 9">PSA 9</option>
+            <option value="PSA 8">PSA 8</option>
+            <option value="BGS 9.5">BGS 9.5</option>
+            <option value="BGS 9">BGS 9</option>
+            <option value="SGC 10">SGC 10</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label id="url-price-label">Asking / Current Price</label>
+          <div class="price-input-wrap">
+            <input type="number" id="url-asking-price" placeholder="0.00" step="0.01" min="0">
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="analyzeUrl()">Find Comps &amp; Analyze</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RIGHT: Analysis ── -->
+  <div class="right-panel scroll-panel">
+    <div id="empty-panel" class="panel">
+      <div class="empty-state">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-title">No Analysis Yet</div>
+        <div class="empty-sub">Fill in the card details on the left and hit "Find Comps" to get started.</div>
+      </div>
+    </div>
+
+    <div id="results-panel" hidden>
+      <!-- Card summary -->
+      <div class="panel" id="card-summary-panel">
+        <div class="panel-header">
+          <div class="panel-title">Card Summary</div>
+          <div id="summary-tags" style="display:flex;gap:6px;flex-wrap:wrap;margin-left:auto;"></div>
+        </div>
+        <div class="panel-body" id="card-summary-body"></div>
+      </div>
+
+      <!-- Comp search links -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🔎 Find Sold Comps</div>
+        </div>
+        <div class="panel-body">
+          <div class="section-label">eBay Sold Listings</div>
+          <div class="comp-grid" id="comp-links"></div>
+          <div class="divider"></div>
+          <div class="section-label">Population &amp; Reference</div>
+          <div class="comp-grid" id="ref-links"></div>
+        </div>
+      </div>
+
+      <!-- Price journal -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">💰 Comp Price Journal</div>
+        </div>
+        <div class="panel-body">
+          <div style="font-size:12.5px;color:var(--fg-muted);margin-bottom:12px;">Enter prices you find from recent sold listings to calculate your fair market value.</div>
+          <div id="journal-entries"></div>
+          <div class="journal-add" onclick="addJournalEntry()">
+            <span>+</span> Add Sold Price
+          </div>
+          <div id="stats-section" hidden>
+            <div class="stats-row" id="stats-row"></div>
+            <div class="divider"></div>
+            <div id="verdict-box"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- My listing checklist -->
+      <div class="panel" id="checklist-panel" hidden>
+        <div class="panel-header">
+          <div class="panel-title">✅ Listing Optimization</div>
+          <div style="margin-left:auto;font-size:12px;color:var(--accent);">cardsandcollects</div>
+        </div>
+        <div class="panel-body">
+          <div class="check-progress">
+            <div class="check-bar"><div class="check-fill" id="check-fill" style="width:0%"></div></div>
+            <div class="check-count" id="check-count">0 / 10</div>
+          </div>
+          <ul class="checklist" id="checklist"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- History always visible -->
+    <div class="panel" id="history-panel" hidden>
+      <div class="panel-header">
+        <div class="panel-title">📋 Recent Analyses</div>
+        <button class="btn-secondary" style="margin-left:auto;padding:4px 10px;font-size:12px;" onclick="clearHistory()">Clear</button>
+      </div>
+      <div class="panel-body">
+        <div class="history-list" id="history-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let cardType = 'sports';
+  let selectedGrade = 'Raw/Ungraded';
+  let isMyListing = false;
+  let isMyListingUrl = false;
+  let currentAnalysis = null;
+  let journalPrices = [];
+  const checklistState = {};
+
+  // ── Tab switch ──
+  function switchTab(tab) {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+    document.getElementById('tab-manual').hidden = tab !== 'manual';
+    document.getElementById('tab-url').hidden = tab !== 'url';
+  }
+
+  // ── Card type ──
+  function setCardType(type) {
+    cardType = type;
+    document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector(`[data-type="${type}"]`).classList.add('active');
+    document.getElementById('sports-fields').hidden = type !== 'sports';
+    document.getElementById('pokemon-fields').hidden = type !== 'pokemon';
+  }
+
+  // ── Grade ──
+  function setGrade(el) {
+    document.querySelectorAll('.grade-pill').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+    selectedGrade = el.dataset.grade;
+  }
+
+  // ── My listing toggle ──
+  function toggleMyListing() {
+    isMyListing = !isMyListing;
+    document.getElementById('myListingToggle').classList.toggle('on', isMyListing);
+    document.getElementById('price-label').textContent = isMyListing ? 'My Asking Price' : 'Current / Target Price';
+  }
+  function toggleMyListingUrl() {
+    isMyListingUrl = !isMyListingUrl;
+    document.getElementById('myListingToggleUrl').classList.toggle('on', isMyListingUrl);
+    document.getElementById('url-price-label').textContent = isMyListingUrl ? 'My Asking Price' : 'Current / Target Price';
+  }
+
+  // ── Build search query ──
+  function buildSearchQuery(overrides = {}) {
+    const mine = overrides.isMyListing !== undefined ? overrides.isMyListing : isMyListing;
+    if (overrides.desc) {
+      return { query: overrides.desc + ' ' + (overrides.grade || ''), grade: overrides.grade || '', price: overrides.price || 0, isMyListing: mine, cardName: overrides.desc };
+    }
+    if (cardType === 'sports') {
+      const player = document.getElementById('s-player').value.trim();
+      const year = document.getElementById('s-year').value.trim();
+      const set = document.getElementById('s-set').value.trim();
+      const num = document.getElementById('s-num').value.trim();
+      const parallel = document.getElementById('s-parallel').value.trim();
+      const price = parseFloat(document.getElementById('asking-price').value) || 0;
+      const parts = [year, player, set, num, parallel, selectedGrade !== 'Raw/Ungraded' ? selectedGrade : ''].filter(Boolean);
+      return { query: parts.join(' '), grade: selectedGrade, price, isMyListing, cardName: [year, player, set, parallel].filter(Boolean).join(' ') };
+    } else {
+      const name = document.getElementById('p-name').value.trim();
+      const set = document.getElementById('p-set').value.trim();
+      const num = document.getElementById('p-num').value.trim();
+      const variant = document.getElementById('p-variant').value.trim();
+      const lang = document.getElementById('p-lang').value;
+      const price = parseFloat(document.getElementById('asking-price').value) || 0;
+      const parts = [name, set, num, variant, lang, selectedGrade !== 'Raw/Ungraded' ? selectedGrade : ''].filter(Boolean);
+      return { query: parts.join(' '), grade: selectedGrade, price, isMyListing, cardName: [name, set, variant, lang].filter(Boolean).join(' ') };
+    }
+  }
+
+  // ── eBay search URL builder (UK) ──
+  function ebaySearchUrl(query, soldOnly = true) {
+    const params = new URLSearchParams({ _nkw: query, _sop: '13' }); // sort: most recently ended
+    if (soldOnly) { params.set('LH_Complete', '1'); params.set('LH_Sold', '1'); }
+    return 'https://www.ebay.co.uk/sch/i.html?' + params.toString();
+  }
+
+  // ── Parse eBay URL to extract listing details ──
+  function parseEbayUrl(raw) {
+    const result = { itemId: null, titleSlug: null, cardName: '', grade: '', detectedPrice: 0 };
+    // Extract item ID (10–13 digits)
+    const idMatch = raw.match(/\/itm\/(?:([^/?#]+)\/)?(\d{10,13})/);
+    if (idMatch) {
+      result.titleSlug = idMatch[1] || null;
+      result.itemId = idMatch[2];
+    }
+    if (!result.itemId) {
+      const bare = raw.match(/\b(\d{10,13})\b/);
+      if (bare) result.itemId = bare[1];
+    }
+    if (result.titleSlug) {
+      // Convert slug to readable string
+      let title = result.titleSlug.replace(/-/g, ' ').replace(/\s{2,}/g, ' ').trim();
+      // Detect grade in title
+      const gradeMatch = title.match(/\b(PSA|BGS|SGC|CGC)\s*(\d+(?:\.\d+)?)/i);
+      if (gradeMatch) {
+        result.grade = gradeMatch[1].toUpperCase() + ' ' + gradeMatch[2];
+        // Remove grade from card name
+        result.cardName = title.replace(gradeMatch[0], '').replace(/\s{2,}/g, ' ').trim();
+      } else {
+        result.cardName = title;
+      }
+      // Capitalise first letter of each word (slugs are often all-lowercase)
+      result.cardName = result.cardName.replace(/\b\w/g, c => c.toUpperCase());
+    }
+    return result;
+  }
+
+  // ── Analyze (manual) ──
+  function analyze() {
+    const data = buildSearchQuery();
+    if (!data.query.trim()) { alert('Please fill in at least the card name or player.'); return; }
+    runAnalysis(data);
+  }
+
+  // ── Analyze (URL) ──
+  function analyzeUrl() {
+    const urlRaw = document.getElementById('url-input').value.trim();
+    const grade = document.getElementById('url-grade').value;
+    const price = parseFloat(document.getElementById('url-asking-price').value) || 0;
+    const mine = isMyListingUrl;
+
+    const parsed = parseEbayUrl(urlRaw);
+
+    // Manual override fields take priority over parsed values
+    const manualDesc = document.getElementById('url-card-desc').value.trim();
+    const cardName = manualDesc || parsed.cardName || '';
+    const finalGrade = grade !== 'Raw' ? grade : (parsed.grade || grade);
+    const query = [cardName, finalGrade !== 'Raw' ? finalGrade : ''].filter(Boolean).join(' ');
+
+    if (!query && !parsed.itemId) { alert('Please paste a valid eBay URL or enter card details.'); return; }
+
+    // Update the grade dropdown to reflect auto-detected grade
+    if (parsed.grade && !manualDesc) {
+      const sel = document.getElementById('url-grade');
+      for (let opt of sel.options) { if (opt.value === parsed.grade) { sel.value = parsed.grade; break; } }
+    }
+
+    // Fill in card desc field if we extracted something
+    if (parsed.cardName && !manualDesc) {
+      document.getElementById('url-card-desc').value = parsed.cardName;
+    }
+
+    runAnalysis({ query, grade: finalGrade, price, isMyListing: mine, cardName, itemId: parsed.itemId });
+  }
+
+  // ── Auto-parse when URL is pasted ──
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('url-input').addEventListener('input', function() {
+      const val = this.value.trim();
+      if (!val.includes('ebay.')) return;
+      const parsed = parseEbayUrl(val);
+      if (parsed.cardName) {
+        const descField = document.getElementById('url-card-desc');
+        if (!descField.value) descField.value = parsed.cardName;
+        // Show detected info
+        let hint = document.getElementById('url-parse-hint');
+        if (!hint) {
+          hint = document.createElement('div');
+          hint.id = 'url-parse-hint';
+          hint.className = 'url-hint';
+          this.parentNode.insertBefore(hint, this.nextSibling.nextSibling);
+        }
+        const parts = [];
+        if (parsed.itemId) parts.push(`Item #${parsed.itemId}`);
+        if (parsed.grade) parts.push(`Grade: ${parsed.grade}`);
+        hint.innerHTML = `<span style="color:var(--ok)">✓ Detected:</span> ${parts.join(' · ')} — <em style="color:var(--fg-muted)">title filled below</em>`;
+      }
+    });
+  });
+
+  // ── Core analysis engine ──
+  function runAnalysis(data) {
+    currentAnalysis = data;
+    journalPrices = [];
+
+    document.getElementById('empty-panel').hidden = true;
+    document.getElementById('results-panel').hidden = false;
+
+    // Summary
+    renderSummary(data);
+
+    // Comp links
+    renderCompLinks(data);
+
+    // Reset journal
+    renderJournal();
+
+    // Checklist
+    if (data.isMyListing) {
+      document.getElementById('checklist-panel').hidden = false;
+      renderChecklist(data);
+    } else {
+      document.getElementById('checklist-panel').hidden = true;
+    }
+
+    // Save to history
+    saveHistory(data);
+    renderHistory();
+
+    // Scroll to results on mobile
+    if (window.innerWidth <= 800) {
+      document.getElementById('results-panel').scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+
+  // ── Summary ──
+  function renderSummary(data) {
+    const tags = document.getElementById('summary-tags');
+    tags.innerHTML = '';
+    if (data.grade && data.grade !== 'Raw/Ungraded') {
+      tags.innerHTML += `<span class="tag graded">${data.grade}</span>`;
+    } else {
+      tags.innerHTML += `<span class="tag raw">Raw</span>`;
+    }
+    if (data.isMyListing) tags.innerHTML += `<span class="tag mine">My Listing</span>`;
+
+    const body = document.getElementById('card-summary-body');
+    const rows = [];
+    if (data.cardName) rows.push(['Card', data.cardName]);
+    if (data.grade) rows.push(['Grade', data.grade]);
+    if (data.price > 0) rows.push([data.isMyListing ? 'Asking Price' : 'Target Price', '£' + data.price.toFixed(2)]);
+    if (data.itemId) rows.push(['eBay Item #', data.itemId]);
+
+    body.innerHTML = rows.map(([k,v]) => `
+      <div class="info-row">
+        <span class="info-row-label">${k}</span>
+        <span class="info-row-val">${v}</span>
+      </div>
+    `).join('') + (data.itemId ? `
+      <a href="https://www.ebay.co.uk/itm/${data.itemId}" target="_blank" class="btn-link accent" style="width:100%;justify-content:center;margin-top:6px;">
+        View on eBay UK ↗
+      </a>
+    ` : '');
+  }
+
+  // ── Comp links ──
+  function renderCompLinks(data) {
+    const q = data.query;
+    const qExact = data.cardName || q;
+    const gradeIsRaw = !data.grade || data.grade === 'Raw/Ungraded';
+    const gradedQ = gradeIsRaw ? q : q;
+
+    const compLinks = [
+      { label: 'Sold Comps — Exact', url: ebaySearchUrl(q), icon: '📦' },
+      { label: 'Sold Comps — Broad', url: ebaySearchUrl(qExact + (gradeIsRaw ? '' : ' ' + data.grade)), icon: '📋' },
+      { label: 'Active Listings', url: ebaySearchUrl(q, false), icon: '🔄' },
+    ];
+
+    if (!gradeIsRaw) {
+      const rawQ = qExact.replace(/ ?(PSA|BGS|SGC|CGC) ?\d+(\.\d+)?/gi, '').trim();
+      compLinks.push({ label: 'Raw Comps (for context)', url: ebaySearchUrl(rawQ + ' raw'), icon: '📌' });
+    }
+
+    document.getElementById('comp-links').innerHTML = compLinks.map(l =>
+      `<a href="${l.url}" target="_blank" class="btn-link blue">${l.icon} ${l.label}</a>`
+    ).join('');
+
+    // Reference links
+    const grade = data.grade || '';
+    const isGraded = grade.startsWith('PSA') || grade.startsWith('BGS') || grade.startsWith('SGC') || grade.startsWith('CGC');
+    const refLinks = [
+      { label: '130 Point', url: 'https://www.130point.com/', icon: '📊' },
+      { label: 'eBay UK Price Guide', url: `https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(qExact)}&LH_Sold=1&LH_Complete=1`, icon: '💹' },
+    ];
+    if (isGraded) {
+      refLinks.push({ label: 'PSA Pop Report', url: 'https://www.psacard.com/pop/', icon: '🏛️' });
+      refLinks.push({ label: 'BGS Population', url: 'https://www.beckett.com/grading/population', icon: '📈' });
+    }
+    if (cardType === 'pokemon') {
+      refLinks.push({ label: 'Cardmarket', url: `https://www.cardmarket.com/en/Pokemon/Products/Search?searchString=${encodeURIComponent(qExact)}`, icon: '🃏' });
+    }
+    refLinks.push({ label: 'PWCC Market', url: `https://www.pwccmarketplace.com/market-prices/search?q=${encodeURIComponent(qExact)}`, icon: '🏷️' });
+
+    document.getElementById('ref-links').innerHTML = refLinks.map(l =>
+      `<a href="${l.url}" target="_blank" class="btn-link">${l.icon} ${l.label}</a>`
+    ).join('');
+  }
+
+  // ── Journal ──
+  function addJournalEntry() {
+    journalPrices.push({ price: '', date: '', notes: '' });
+    renderJournal();
+    // Focus the last price input
+    setTimeout(() => {
+      const inputs = document.querySelectorAll('.journal-price-input');
+      if (inputs.length) inputs[inputs.length - 1].focus();
+    }, 50);
+  }
+
+  function removeJournalEntry(i) {
+    journalPrices.splice(i, 1);
+    renderJournal();
+    updateStats();
+  }
+
+  function updateJournalPrice(i, val) {
+    journalPrices[i].price = parseFloat(val) || '';
+    updateStats();
+  }
+  function updateJournalNotes(i, val) {
+    journalPrices[i].notes = val;
+  }
+
+  function renderJournal() {
+    const container = document.getElementById('journal-entries');
+    if (journalPrices.length === 0) {
+      container.innerHTML = '';
+      updateStats();
+      return;
+    }
+    container.innerHTML = journalPrices.map((entry, i) => `
+      <div class="journal-row">
+        <div class="price-input-wrap">
+          <input type="number" class="journal-price-input" placeholder="29.99" value="${entry.price || ''}"
+            oninput="updateJournalPrice(${i}, this.value)" step="0.01" min="0">
+        </div>
+        <input type="text" placeholder="Notes" value="${entry.notes || ''}"
+          oninput="updateJournalNotes(${i}, this.value)" style="font-size:12px;">
+        <button class="remove-btn" onclick="removeJournalEntry(${i})">✕</button>
+      </div>
+    `).join('');
+    updateStats();
+  }
+
+  function updateStats() {
+    const prices = journalPrices.map(e => e.price).filter(p => p > 0);
+    const statsSection = document.getElementById('stats-section');
+
+    if (prices.length < 2) {
+      statsSection.hidden = true;
+      return;
+    }
+    statsSection.hidden = false;
+
+    const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+    const low = Math.min(...prices);
+    const high = Math.max(...prices);
+
+    document.getElementById('stats-row').innerHTML = `
+      <div class="stat-box">
+        <div class="stat-label">Avg Sale</div>
+        <div class="stat-value">£${avg.toFixed(0)}</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">Low</div>
+        <div class="stat-value" style="color:var(--ok)">£${low.toFixed(0)}</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-label">High</div>
+        <div class="stat-value" style="color:var(--warn)">£${high.toFixed(0)}</div>
+      </div>
+    `;
+
+    renderVerdict(avg, low, high);
+  }
+
+  function renderVerdict(avg, low, high) {
+    const myPrice = currentAnalysis?.price || 0;
+    const box = document.getElementById('verdict-box');
+
+    if (myPrice <= 0) {
+      box.innerHTML = `
+        <div class="verdict neutral">
+          <div class="verdict-icon">📊</div>
+          <div>
+            <div class="verdict-label">Market Range</div>
+            <div class="verdict-sub">Fair price range: <strong>£${low.toFixed(2)} – £${high.toFixed(2)}</strong>. Enter your price above for a verdict.</div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    const margin = myPrice / avg;
+    let cls, icon, label, msg;
+
+    if (margin < 0.80) {
+      cls = 'bad'; icon = '🔻'; label = 'Priced Too Low';
+      msg = `At £${myPrice.toFixed(2)} you're ${((1 - margin) * 100).toFixed(0)}% below the avg sale of £${avg.toFixed(2)}. You may be leaving money on the table.`;
+    } else if (margin <= 1.15) {
+      cls = 'ok'; icon = '✅'; label = 'Priced Right';
+      msg = `£${myPrice.toFixed(2)} is within the typical range of £${low.toFixed(2)}–£${high.toFixed(2)}. Looks competitive.`;
+    } else if (margin <= 1.40) {
+      cls = 'warn'; icon = '⚠️'; label = 'Slightly High';
+      msg = `£${myPrice.toFixed(2)} is ${((margin - 1) * 100).toFixed(0)}% above avg. Consider enabling Best Offer or lowering slightly.`;
+    } else {
+      cls = 'bad'; icon = '🚨'; label = 'Priced Too High';
+      msg = `£${myPrice.toFixed(2)} is ${((margin - 1) * 100).toFixed(0)}% above the avg sale of £${avg.toFixed(2)}. Unlikely to sell at this price.`;
+    }
+
+    box.innerHTML = `
+      <div class="verdict ${cls}">
+        <div class="verdict-icon">${icon}</div>
+        <div>
+          <div class="verdict-label">${label}</div>
+          <div class="verdict-sub">${msg}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // ── Checklist ──
+  const CHECKLIST_ITEMS = [
+    { id: 'title-year',   text: 'Title includes year & brand/set',      hint: 'e.g. "2023 Topps Chrome" — required for search' },
+    { id: 'title-player', text: 'Title includes full player/card name',  hint: 'Full name + position or character' },
+    { id: 'title-num',    text: 'Title has card number & print run',     hint: 'e.g. "#/99 Refractor" or "PSA 10"' },
+    { id: 'photos-front', text: 'Clear front photo, well lit & centered',hint: 'No glare, no dark corners' },
+    { id: 'photos-back',  text: 'Back photo showing card number',        hint: 'Buyers check print run on the back' },
+    { id: 'photos-corners','text': 'Corner close-ups included',          hint: 'Build trust and reduce INR claims' },
+    { id: 'returns',      text: '30-day return policy enabled',          hint: 'Boosts visibility in eBay search' },
+    { id: 'best-offer',   text: 'Best Offer turned on',                  hint: 'Increases buyer engagement by 2-3×' },
+    { id: 'shipping',     text: 'Shipping is competitive / free',        hint: 'High shipping fees suppress visibility' },
+    { id: 'timing',       text: 'Auction ends on a Sunday evening',      hint: '8–10 PM ET for maximum eyeballs' },
+  ];
+
+  function renderChecklist(data) {
+    const ul = document.getElementById('checklist');
+    ul.innerHTML = CHECKLIST_ITEMS.map(item => `
+      <li class="${checklistState[item.id] ? 'checked' : ''}" onclick="toggleCheck('${item.id}')">
+        <div class="check-box">${checklistState[item.id] ? '✓' : ''}</div>
+        <div class="check-text">
+          ${item.text}
+          <span class="check-hint">${item.hint}</span>
+        </div>
+      </li>
+    `).join('');
+    updateCheckProgress();
+  }
+
+  function toggleCheck(id) {
+    checklistState[id] = !checklistState[id];
+    const item = document.querySelector(`#checklist li[onclick="toggleCheck('${id}')"]`);
+    if (item) {
+      item.classList.toggle('checked', checklistState[id]);
+      item.querySelector('.check-box').textContent = checklistState[id] ? '✓' : '';
+    }
+    updateCheckProgress();
+  }
+
+  function updateCheckProgress() {
+    const total = CHECKLIST_ITEMS.length;
+    const done = CHECKLIST_ITEMS.filter(i => checklistState[i.id]).length;
+    const pct = (done / total) * 100;
+    document.getElementById('check-fill').style.width = pct + '%';
+    document.getElementById('check-count').textContent = `${done} / ${total}`;
+    document.getElementById('check-fill').style.background = pct === 100 ? 'var(--ok)' : pct > 50 ? 'var(--warn)' : 'var(--accent)';
+  }
+
+  // ── History ──
+  function saveHistory(data) {
+    try {
+      let history = JSON.parse(localStorage.getItem('cpc-history') || '[]');
+      history.unshift({ type: cardType, name: data.cardName || data.query, price: data.price, grade: data.grade, ts: Date.now(), data });
+      history = history.slice(0, 8);
+      localStorage.setItem('cpc-history', JSON.stringify(history));
+    } catch(e) {}
+  }
+
+  function renderHistory() {
+    try {
+      const history = JSON.parse(localStorage.getItem('cpc-history') || '[]');
+      const panel = document.getElementById('history-panel');
+      if (history.length === 0) { panel.hidden = true; return; }
+      panel.hidden = false;
+      document.getElementById('history-list').innerHTML = history.map((h, i) => `
+        <div class="history-item" onclick="replayHistory(${i})">
+          <span class="history-type ${h.type || 'sports'}">${h.type === 'pokemon' ? 'PKM' : 'SPC'}</span>
+          <span class="history-name">${h.name || 'Card'} ${h.grade ? '— ' + h.grade : ''}</span>
+          <span class="history-price">${h.price > 0 ? '£' + h.price.toFixed(2) : '—'}</span>
+          <button class="history-delete" onclick="deleteHistory(event,${i})">✕</button>
+        </div>
+      `).join('');
+    } catch(e) {}
+  }
+
+  function replayHistory(i) {
+    try {
+      const history = JSON.parse(localStorage.getItem('cpc-history') || '[]');
+      if (history[i]) runAnalysis(history[i].data);
+    } catch(e) {}
+  }
+
+  function deleteHistory(e, i) {
+    e.stopPropagation();
+    try {
+      let history = JSON.parse(localStorage.getItem('cpc-history') || '[]');
+      history.splice(i, 1);
+      localStorage.setItem('cpc-history', JSON.stringify(history));
+      renderHistory();
+    } catch(e) {}
+  }
+
+  function clearHistory() {
+    try { localStorage.removeItem('cpc-history'); } catch(e) {}
+    document.getElementById('history-panel').hidden = true;
+  }
+
+  // ── Init ──
+  renderHistory();
+</script>
